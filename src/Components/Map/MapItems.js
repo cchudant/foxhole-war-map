@@ -56,55 +56,88 @@ class MapItems extends React.Component{
         return closestNames[0].text;
     }
 
-    componentDidMount() {
+    async fetchDynamicData(mapList) {
+        console.log('Loading Dynamic Map Data..')
 
-        //fetch(process.env.PUBLIC_URL + '/test-data-static.json')
-        fetch('/map/getStatic')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Loading Static Map Data..');
-            data.forEach(region => {
-                if(region === null) { return; }
-                region.mapTextItems.map(mapTextItem => {
-                    let coords = this.convertCoords(region.regionId, mapTextItem.x, mapTextItem.y);
-                    let mapTextItemObject = new MapTextItem(region.regionId, mapTextItem.text, coords.xcoord, coords.ycoord);
-                    this.setState(prevState => {
-                        const mapTextItems = prevState.mapTextItems.concat(mapTextItemObject);
-                        return { mapTextItems };
-                    });
-                });
-            });
-            this.setState({
-                staticLoaded: true
-            });
-        }).catch(error => {
-            console.log('Error - Could not load Static Map Data.\n' + error);
-        });
+        let testData
+        if (process.env.REACT_APP_USE_TEST_DATA)  { // debug
+            testData = await fetch(process.env.PUBLIC_URL + '/test-data-dynamic.json')
+                .then(response => response.json())
+        }
 
-        //fetch(process.env.PUBLIC_URL + '/test-data-dynamic.json')
-        fetch('/map/getDynamic')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Loading Dynamic Map Data..');
-            data.forEach(region => {
-                if(region === null) { return; }
+        await Promise.all(
+            mapList.map(async (map, i) => {
+                const region = !testData ?
+                    await fetch(process.env.REACT_APP_API_ROOT + `/worldconquest/maps/${map}/dynamic/public`)
+                        .then(res => res.json()) : testData[i]
+
+                if (!region) return
+
                 region.mapItems.map(mapItem => {
-                    let coords = this.convertCoords(region.regionId, mapItem.x, mapItem.y);
-                    let mapItemObject = new MapItem(region.regionId, mapItem.teamId, mapItem.iconType, coords.xcoord, coords.ycoord, mapItem.flags);
+                    let coords = this.convertCoords(region.regionId, mapItem.x, mapItem.y)
+                    let mapItemObject = new MapItem(region.regionId, mapItem.teamId, mapItem.iconType, coords.xcoord, coords.ycoord, mapItem.flags)
                     if (mapItemObject.iconImage != null) {
                         this.setState(prevState => {
-                            const mapItems = prevState.mapItems.concat(mapItemObject);
-                            return { mapItems };
-                        });
+                            const mapItems = prevState.mapItems.concat(mapItemObject)
+                            return { mapItems }
+                        })
                     }
-                });
-            });
-            this.setState({
-                dynamicLoaded: true
-            });
-        }).catch(error => {
-            console.log('Error - Could not load Dynamic Map Data.\n' + error);
-        });
+                })
+            })
+        )
+        this.setState({
+            dynamicLoaded: true
+        })
+    }
+
+    async fetchStaticData(mapList) {
+        console.log('Loading Static Map Data..')
+
+        let testData
+        if (process.env.REACT_APP_USE_TEST_DATA)  { // debug
+            testData = await fetch(process.env.PUBLIC_URL + '/test-data-static.json')
+                .then(response => response.json())
+        }
+
+        await Promise.all(
+            mapList.map(async (map, i) => {
+                const region = !testData ?
+                    await fetch(process.env.REACT_APP_API_ROOT + `/worldconquest/maps/${map}/static`)
+                        .then(res => res.json()) : testData[i]
+
+                if (!region) return
+
+                region.mapTextItems.map(mapTextItem => {
+                    let coords = this.convertCoords(region.regionId, mapTextItem.x, mapTextItem.y)
+                    let mapTextItemObject = new MapTextItem(region.regionId, mapTextItem.text, coords.xcoord, coords.ycoord)
+                    this.setState(prevState => {
+                        const mapTextItems = prevState.mapTextItems.concat(mapTextItemObject)
+                        return { mapTextItems }
+                    })
+                })
+            })
+        )
+        this.setState({
+            staticLoaded: true
+        })
+    }
+
+    async fetchData() {
+        const mapList = await fetch(process.env.REACT_APP_API_ROOT + '/worldconquest/maps')
+            .then(res => res.json())
+
+        await Promise.all([
+            this.fetchStaticData(mapList).catch(error => {
+                console.log('Error - Could not load Static Map Data.', error);
+            }),
+            this.fetchDynamicData(mapList).catch(error => {
+                console.log('Error - Could not load Dynamic Map Data.', error);
+            }),
+        ])
+    }
+
+    async componentDidMount() {
+        await this.fetchData()
     }
 
     render() {

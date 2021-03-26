@@ -1,3 +1,15 @@
+# Fork of Foxhole War Map
+
+This fork changes the endpoint used to gather data, so that it follows the [public schema foxhole provides](https://github.com/clapfoot/warapi).
+
+Please do **not** put the public foxhole api url as FOXHOLE_URL env var!
+You should setup a caching reverse-proxy instead, so that the foxhole public api does not get overloaded with requests.
+
+
+Original readme follows
+
+---
+
 Foxhole War Map
 ===============
 

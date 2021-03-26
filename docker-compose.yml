@@ -1,0 +1,11 @@
+version: '3'
+services:
+  foxhole_cache:
+    image: rookiezoe/nginx # nginx with module headers-more-nginx-module
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    tmpfs:
+      - /tmp/cache
+    ports:
+      - '4444:80'
+    restart: always
